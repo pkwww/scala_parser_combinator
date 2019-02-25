@@ -39,9 +39,6 @@ object PkwParser {
         failure()
       }
     })
-//    for (
-//      a <- parser
-//    ) {if (predicate(a)) {pure(a)} else {failure()}}
   }
 
   val satC: (Char => Boolean) => Parser[Char] = sat(item)
@@ -69,5 +66,29 @@ object PkwParser {
   }
   def many1[A](p: Parser[A]): Parser[List[A]] = {
     for ( x <- p; xs <- many(p) ) yield {x::xs}
+  }
+  def sepBy[A, B](p: Parser[A])(sep: Parser[B]): Parser[List[A]] = {
+    Or(sepBy1(p)(sep))(pure(List()))
+  }
+  def sepBy1[A, B](p: Parser[A])(sep: Parser[B]): Parser[List[A]] = {
+    for (
+      a <- p;
+      as <- many(sep.flatMap(_ => p))
+    ) yield {a::as}
+  }
+  def chainl[A](p: Parser[A])(op: Parser[A => A => A])(a: A): Parser[A] = {
+    Or(chainl1(p)(op))(pure(a))
+  }
+  def chainl1[A](p: Parser[A])(op: Parser[A => A => A]): Parser[A] = {
+    val rest: A => Parser[A] = a => {
+      op.flatMap(f => {
+        p.flatMap(b => {
+          rest(f(a)(b))
+        })
+      })
+    }
+    p.flatMap(a => {
+      rest(a)
+    })
   }
 }
